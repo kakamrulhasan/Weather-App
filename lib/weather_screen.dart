@@ -10,7 +10,7 @@ class weatherScreen extends StatefulWidget {
 }
 
 class _weatherScreenState extends State<weatherScreen> {
-  final _searchCtr = TextEditingController(text: 'comilla');
+  final _searchCtr = TextEditingController(text: 'Dhaka');
   bool _loading = false;
   String? _error;
   String? _resolvedCity;
@@ -241,7 +241,7 @@ class _weatherScreenState extends State<weatherScreen> {
                         controller: _searchCtr,
                         onSubmitted: (v) => _fetch(v),
                         decoration: InputDecoration(
-                          labelText: 'Enter city(e.g.. Comilla)',
+                          labelText: 'Enter city(e.g.. Dhaka)',
                           labelStyle: TextStyle(color: Colors.white),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
