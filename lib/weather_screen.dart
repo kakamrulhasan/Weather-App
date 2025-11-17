@@ -1,8 +1,6 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/number_symbols_data.dart';
 
 class weatherScreen extends StatefulWidget {
   const weatherScreen({super.key});
@@ -80,6 +78,30 @@ class _weatherScreenState extends State<weatherScreen> {
       final wText = (current['weather_code'].toString());
 
       final hourly = (deData['hourly'] as Map<String, dynamic>);
+      // ------- Daily (7–10 days forecast) -------
+      final daily = (deData['daily'] as Map<String, dynamic>);
+      final dDates = List<String>.from(daily['time']);
+      final dMax = List<num>.from(daily['temperature_2m_max']);
+      final dMin = List<num>.from(daily['temperature_2m_min']);
+
+      final outDaily = <_Daily>[];
+
+      for (int i = 0; i < dDates.length; i++) {
+        outDaily.add(
+          _Daily(
+            DateTime.parse(dDates[i]),
+            dMin[i].toDouble(),
+            dMax[i].toDouble(),
+          ),
+        );
+      }
+
+      _dailies = outDaily;
+
+      // today's high-low (used under big temp)
+      _hi = outDaily.first.tMax;
+      _lo = outDaily.first.tMin;
+
       final hTimes = List<String>.from(hourly['time'] as List);
       final hTemps = List<num>.from(hourly['temperature_2m'] as List);
       final hCodes = List<num>.from(hourly['weather_code'] as List);
@@ -102,6 +124,9 @@ class _weatherScreenState extends State<weatherScreen> {
         _wText = codeToText(wCode);
         _windKph = windKph;
         _hourlies = outHourly;
+        _dailies = outDaily;
+        _hi = outDaily.first.tMax;
+        _lo = outDaily.first.tMin;
       });
     } catch (e) {
       throw Exception(e.toString());
@@ -230,7 +255,9 @@ class _weatherScreenState extends State<weatherScreen> {
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
-                      onPressed: _loading ? null : () => _fetch(_searchCtr.text),
+                      onPressed: _loading
+                          ? null
+                          : () => _fetch(_searchCtr.text),
                       child: Text('Go'),
                     ),
                   ],
@@ -264,7 +291,11 @@ class _weatherScreenState extends State<weatherScreen> {
                   Center(
                     child: Text(
                       '${_tempC!.toStringAsFixed(1)}°C',
-                      style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold, fontSize: 96),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 96,
+                      ),
                     ),
                   ),
                 ],
@@ -301,6 +332,119 @@ class _weatherScreenState extends State<weatherScreen> {
                             ],
                           );
                         },
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                if (_dailies.isNotEmpty)
+                  Card(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "10-Day Forecast",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: 7, // show 7 like screenshot
+                            itemBuilder: (context, i) {
+                              final d = _dailies[i];
+                              final dayName = (i == 0)
+                                  ? "Today"
+                                  : [
+                                      "Mon",
+                                      "Tue",
+                                      "Wed",
+                                      "Thu",
+                                      "Fri",
+                                      "Sat",
+                                      "Sun",
+                                    ][d.date.weekday - 1];
+
+                              // bar line width calculation
+                              final barMin = _dailies
+                                  .map((e) => e.tMin)
+                                  .reduce((a, b) => a < b ? a : b);
+                              final barMax = _dailies
+                                  .map((e) => e.tMax)
+                                  .reduce((a, b) => a > b ? a : b);
+
+                              final barWidth =
+                                  ((d.tMax - barMin) / (barMax - barMin)) * 120;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Row(
+                                  children: [
+                                    // DAY NAME
+                                    SizedBox(width: 60, child: Text(dayName)),
+
+                                    // ICON
+                                    Icon(
+                                      codeToIcons(_hourlies.first.code),
+                                      size: 22,
+                                    ),
+
+                                    const SizedBox(width: 12),
+
+                                    // BAR
+                                    Expanded(
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade300,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          Container(
+                                            height: 6,
+                                            width: barWidth,
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 12),
+
+                                    // TEMPS
+                                    Text("${d.tMin.toInt()}°"),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "${d.tMax.toInt()}°",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
