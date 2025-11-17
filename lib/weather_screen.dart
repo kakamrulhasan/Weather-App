@@ -48,7 +48,8 @@ class _weatherScreenState extends State<weatherScreen> {
       throw Exception(e.toString());
     }
   }
-
+   
+   
   Future<void> _fetch(String city) async {
     setState(() {
       _loading = true;
