@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/number_symbols_data.dart';
 
 class weatherScreen extends StatefulWidget {
   const weatherScreen({super.key});
@@ -101,12 +102,13 @@ class _weatherScreenState extends State<weatherScreen> {
         _wText = codeToText(wCode);
         _windKph = windKph;
         _hourlies = outHourly;
-        
       });
     } catch (e) {
       throw Exception(e.toString());
     } finally {
-      setState(() {});
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
@@ -186,12 +188,128 @@ class _weatherScreenState extends State<weatherScreen> {
   @override
   void initState() {
     super.initState();
-    _fetch('Comilla');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text('weather app')));
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => _fetch(_searchCtr.text),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.blue, Colors.blueAccent, Colors.white70],
+            ),
+          ),
+          child: SafeArea(
+            child: ListView(
+              padding: EdgeInsets.all(16),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        style: TextStyle(color: Colors.white),
+                        controller: _searchCtr,
+                        onSubmitted: (v) => _fetch(v),
+                        decoration: InputDecoration(
+                          labelText: 'Enter city(e.g.. Comilla)',
+                          labelStyle: TextStyle(color: Colors.white),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: _loading ? null : () => _fetch(_searchCtr.text),
+                      child: Text('Go'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_loading) const LinearProgressIndicator(),
+                if (_error != null)
+                  Text(_error!, style: TextStyle(color: Colors.red)),
+                const SizedBox(height: 8),
+                Column(
+                  children: [
+                    Text(
+                      'MY LOCATION',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      _resolvedCity ?? 'Bangladesh',
+                      style: TextStyle(
+                        fontSize: 28,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_tempC != null) ...[
+                  Center(
+                    child: Text(
+                      '${_tempC!.toStringAsFixed(1)}°C',
+                      style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold, fontSize: 96),
+                    ),
+                  ),
+                ],
+                if (_windKph != null)
+                  Card(
+                    elevation: 0,
+                    color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Sunny condition likely through today, wind up to ${_windKph} km/h',
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                if (_hourlies.isNotEmpty)
+                  Card(
+                    color: Colors.white,
+                    child: SizedBox(
+                      height: 112,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _hourlies.length,
+                        itemBuilder: (context, i) => const SizedBox(width: 12),
+                        separatorBuilder: (context, i) {
+                          final h = _hourlies[i];
+                          final label = i == 0 ? 'now' : h.t.hour.toString();
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(label),
+                              Icon(codeToIcons(h.code)),
+                              Text('${h.temp.toStringAsFixed(0)}°C'),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
